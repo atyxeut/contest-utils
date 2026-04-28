@@ -6,23 +6,14 @@ import re
 import subprocess
 from pathlib import Path
 
-# > pp.py
-# expand all #include <***.hpp> directives in sol.cpp, output the result into sub.cpp
 parser = argparse.ArgumentParser(add_help=False)
-# > pp.py -t
-# select the target compiler, -t gcc or -t msvc, defaults to gcc
-# -t msvc when you want to debug your program in Visual Studio (only support template/sol.cpp)
-parser.add_argument("-t", "--target", default="gcc", choices=["gcc", "msvc"])
-# > pp.py -m
-# add `#define IS_ONE_INPUT_MULTIPLE_TESTS 1` at the beginning of sub.cpp
-# see template/sol.cpp for the usage of this macro
-parser.add_argument("-m", "--multiple", action="store_true")
-# > pp.py -r
-# add `#define NDEBUG` at the beginning of sub.cpp
-# used to disable C-style asserts, meanwhile also enable `#define IS_IN_DEBUG_MODE 0` from <macro/is_in_debug_mode.hpp>
-parser.add_argument("-r", "--release", action="store_true")
-argv = parser.parse_args()
 
+# > pp.py -m
+# expand #include <***.hpp> directives in sol.cpp, output the result into sub.cpp, then add `#define NDEBUG` at the beginning of sub.cpp
+# if -m is presented, add `#define MULTIPLE_TESTS 1` at the beginning of sub.cpp, see template/sol.cpp for the usage of this macro
+parser.add_argument("-m", "--multiple_tests", action="store_true")
+
+argv = parser.parse_args()
 
 sol_cpp_path = Path("sol.cpp")
 sub_cpp_path = Path("sub.cpp")
@@ -35,110 +26,101 @@ lines_to_ignore = ["#pragma once", "using namespace std;"]
 
 
 def expand(cur_file_path: Path):
-  with cur_file_path.open() as src_file:
-    code = src_file.readlines()
+    with cur_file_path.open() as src_file:
+        code = src_file.readlines()
 
-  if len(code) == 0:
-    return ""
+    if len(code) == 0:
+        return ""
 
-  for i in range(len(code)):
-    if code[i].rstrip() in lines_to_ignore:
-      code[i] = ""
-      continue
-
-    # avoid duplicate `#include <xxx>`
-    header_match = header_match_pattern.match(code[i])
-    if header_match:
-      header_name = header_match.group(1)
-      if header_name in headers_to_ignore:
-        code[i] = ""
-      else:
-        if not header_name.endswith(".hpp"):
-          # standard headers
-          if argv.target == "gcc":
-            # only include <bits/stdc++.h> to reduce code size
+    for i in range(len(code)):
+        if code[i].rstrip() in lines_to_ignore:
             code[i] = ""
-          else:
-            headers_to_ignore.append(header_name)
-        else:
-          headers_to_ignore.append(header_name)
-          custom_header_path = custom_header_include_path / header_name
-          code[i] = expand(custom_header_path)
+            continue
 
-  return ("".join(code) + ("" if cur_file_path == sol_cpp_path.resolve() else "\n")).lstrip()
+        # avoid duplicate `#include <xxx>`
+        header_match = header_match_pattern.match(code[i])
+        if header_match:
+            header_name = header_match.group(1)
+            if header_name in headers_to_ignore:
+                code[i] = ""
+            else:
+                if not header_name.endswith(".hpp"):
+                    # remove all standard headers, only include <bits/stdc++.h> to reduce code size
+                    code[i] = ""
+                    headers_to_ignore.append(header_name)
+                else:
+                    headers_to_ignore.append(header_name)
+                    custom_header_path = custom_header_include_path / header_name
+                    code[i] = expand(custom_header_path)
+
+    return ("".join(code) + ("" if cur_file_path == sol_cpp_path.resolve() else "\n")).lstrip()
 
 
 chunks_to_ignore = [("assert(", ";")]
 
 
 def remove_unecessary_chunks(code: str):
-  code = bytearray(code, "utf-8")
+    code = bytearray(code, "utf-8")
 
-  for chunk in chunks_to_ignore:
-    begin = bytes(chunk[0], "utf-8")
-    end = bytes(chunk[1], "utf-8")
-    i = code.find(begin, 0)
-    while i != -1:
-      while code[i] != end:
-        code[i] = ord(" ")
-        i += 1
-      i = code.find(begin, i + 1)
+    for chunk in chunks_to_ignore:
+        begin = bytes(chunk[0], "utf-8")
+        end = bytes(chunk[1], "utf-8")
+        i = code.find(begin, 0)
+        while i != -1:
+            while code[i] != end:
+                code[i] = ord(" ")
+                i += 1
+            i = code.find(begin, i + 1)
 
-  return code.decode("utf-8")
+    return code.decode("utf-8")
 
 
 def remove_unecessary_white_characters(code: list):
-  char_set = ";,:?.{}[]()<>=!&|^+-*/%"
-
-  for i in range(len(code)):
-    if code[i] == "\n":
-      code[i] = ""
-    elif code[i] in char_set:
-      if i - 1 >= 0 and code[i - 1] == " ":
-        code[i - 1] = ""
-      if i + 1 < len(code) and code[i + 1] == " ":
-        code[i + 1] = ""
-
-  return "".join(code) + "\n\n"
+    char_set = ";,:?.{}[]()<>=!&|^+-*/%"
+    for i in range(len(code)):
+        if code[i] == "\n":
+            code[i] = ""
+        elif code[i] in char_set:
+            if i - 1 >= 0 and code[i - 1] == " ":
+                code[i - 1] = ""
+            if i + 1 < len(code) and code[i + 1] == " ":
+                code[i + 1] = ""
+    return "".join(code) + "\n\n"
 
 
 def main():
-  expanded_code = expand(sol_cpp_path.resolve())
-
-  if argv.target == "gcc":
+    expanded_code = expand(sol_cpp_path.resolve())
 
     def get_main_fn_end():
-      left_brace_cnt = 1
-      pos = expanded_code.find("{", expanded_code.find("int main()")) + 1
-      while left_brace_cnt != 0:
-        if expanded_code[pos] == "{":
-          left_brace_cnt += 1
-        elif expanded_code[pos] == "}":
-          left_brace_cnt -= 1
-        pos += 1
-      return pos
+        left_brace_cnt = 1
+        pos = expanded_code.find("{", expanded_code.find("int main()")) + 1
+        while left_brace_cnt != 0:
+            if expanded_code[pos] == "{":
+                left_brace_cnt += 1
+            elif expanded_code[pos] == "}":
+                left_brace_cnt -= 1
+            pos += 1
+        return pos
 
     main_fn_end_pos = get_main_fn_end()
     upper = remove_unecessary_chunks(expanded_code[:main_fn_end_pos])
 
-    macro_defs = ""
+    macro_defs = "#define NDEBUG\n"
     if argv.multiple:
-      macro_defs += "#define IS_ONE_INPUT_MULTIPLE_TESTS 1\n"
-    if argv.release:
-      macro_defs += "#define NDEBUG\n"
+        macro_defs += "#define IS_ONE_INPUT_MULTIPLE_TESTS 1\n"
 
     upper_code_before_pp_path = Path("build/upper_code_before_pp.cpp")
     upper_code_before_pp_path.write_text(macro_defs + upper)
-    subprocess.run(["g++", "-E", "-P", "-o", sub_cpp_path, upper_code_before_pp_path])
-    subprocess.run(["clang-format", "-style=file:preprocessor/.clang-format-pp", "-i", sub_cpp_path])
+    subprocess.run(["g++", "-E", "-P", "-o", sub_cpp_path, upper_code_before_pp_path], check=True)
+    subprocess.run(["clang-format", "-style=file:preprocessor/.clang-format-pp", "-i", sub_cpp_path], check=True)
     upper = remove_unecessary_white_characters(list(sub_cpp_path.read_text()))
 
     beginning = "#include <bits/stdc++.h>\n\n" + "using namespace std;\n\n"
-    lib_description = "// library from: https://github.com/atyxeut/cp-utils\n"
+    lib_description = "// library from: https://github.com/atyxeut/contest-utils\n"
     expanded_code = beginning + lib_description + upper + expanded_code[main_fn_end_pos:].lstrip()
 
-  sub_cpp_path.write_text(expanded_code)
+    sub_cpp_path.write_text(expanded_code)
 
 
 if __name__ == "__main__":
-  main()
+    main()
