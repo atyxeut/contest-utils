@@ -93,11 +93,13 @@ def generate_build_folder():
   remove(Path(".cache"))
   remove(Path(".xmake"))
   remove(Path("build"))
-  subprocess.run(["xmake", "f"])
-  subprocess.run(["xmake", "project", "-k", "compile_commands", "--outputdir=build"], text=True, stdout=subprocess.PIPE)
+  subprocess.run(["xmake", "f"], check=False)
+  subprocess.run(["xmake", "project", "-k", "compile_commands", "--outputdir=build"], text=True, stdout=subprocess.PIPE, check=False)
 
   init_build_target_name = "init"
-  build_info = subprocess.run(["xmake", "--rebuild", "-v", init_build_target_name], text=True, stdout=subprocess.PIPE).stdout.split("\n")
+  build_info = subprocess.run(
+    ["xmake", "--rebuild", "-v", init_build_target_name], text=True, stdout=subprocess.PIPE, check=False
+  ).stdout.split("\n")
 
   for i in range(len(build_info)):
     if build_info[i].find("linking.") != -1:

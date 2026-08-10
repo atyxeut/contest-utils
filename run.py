@@ -39,7 +39,7 @@ gen_exe_path = exe_dir_path / "gen"
 
 def execute(exe_path: Path, input_data: str):
   time_point_begin = time.perf_counter()
-  process = subprocess.run([exe_path], text=True, input=input_data, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+  process = subprocess.run([exe_path], text=True, input=input_data, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
   time_point_end = time.perf_counter()
   return [process.stdout, process.stderr, 1e3 * (time_point_end - time_point_begin)]
 
@@ -81,7 +81,7 @@ def compare_output(usr_out: str, std_out: str):
 
 
 def normal_mode(tested_cnt: int = 0):
-  subprocess.run(["xmake"])
+  subprocess.run(["xmake"], check=False)
   print(f"testing... see {log_txt_path}")
 
   for testcase in testdata_dir_path.glob("*.in"):
@@ -117,9 +117,9 @@ def normal_mode(tested_cnt: int = 0):
 
 def diff_mode(no_difference: bool = True):
   # must ensure that none of sol.cpp, std.cpp and gen.cpp is empty
-  subprocess.run(["xmake", "build", "sol"])
-  subprocess.run(["xmake", "build", "std"])
-  subprocess.run(["xmake", "build", "gen"])
+  subprocess.run(["xmake", "build", "sol"], check=False)
+  subprocess.run(["xmake", "build", "std"], check=False)
+  subprocess.run(["xmake", "build", "gen"], check=False)
   print(f"testing... see {log_txt_path}")
 
   for _ in range(int(argv.diff)):
@@ -132,7 +132,7 @@ def diff_mode(no_difference: bool = True):
       return "1"
 
     new_test_data_stem = get_new_test_data_stem()
-    new_test_data = subprocess.run([gen_exe_path], text=True, stdout=subprocess.PIPE).stdout
+    new_test_data = subprocess.run([gen_exe_path], text=True, stdout=subprocess.PIPE, check=False).stdout
     sol_output, _, _ = execute(sol_exe_path, new_test_data)
     std_output, _, _ = execute(std_exe_path, new_test_data)
 
@@ -163,7 +163,7 @@ def main():
   pp_args_list = ["-t", "gcc", "-r"]
   if argv.multiple:
     pp_args_list.append("-m")
-  subprocess.run(["python3", "preprocessor/pp.py"] + pp_args_list)
+  subprocess.run(["python3", "preprocessor/pp.py"] + pp_args_list, check=False)
 
   log_txt_path.write_text("")
 
