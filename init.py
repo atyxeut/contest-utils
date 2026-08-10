@@ -35,12 +35,20 @@ gen_cpp_path = Path("gen.cpp")
 
 
 def generate_cpp_files():
+  for i in range(5):
+    path = Path(str(i + 1) + ".cpp")
+    if not path.exists():
+      path.touch()
+
   if not sol_cpp_path.exists():
     sol_cpp_path.touch()
+
   if not sub_cpp_path.exists():
     sub_cpp_path.touch()
+
   if not std_cpp_path.exists():
     std_cpp_path.touch()
+
   if not gen_cpp_path.exists():
     gen_cpp_path.touch()
 
