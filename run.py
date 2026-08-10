@@ -39,7 +39,7 @@ gen_exe_path = exe_dir_path / "gen"
 
 def execute(exe_path: Path, input_data: str):
   time_point_begin = time.perf_counter()
-  process = subprocess.run([exe_path], text=True, input=input_data, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+  process = subprocess.run([exe_path], text=True, input=input_data, compare_output=True, check=False)
   time_point_end = time.perf_counter()
   return [process.stdout, process.stderr, 1e3 * (time_point_end - time_point_begin)]
 
