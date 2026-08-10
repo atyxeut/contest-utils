@@ -136,10 +136,10 @@ def diff_mode(no_difference: bool = True):
     sol_output, _, _ = execute(sol_exe_path, new_test_data)
     std_output, _, _ = execute(std_exe_path, new_test_data)
 
-    def save_data():
-      (testdata_dir_path / (new_test_data_stem + ".in")).write_text(new_test_data)
-      (testdata_dir_path / (new_test_data_stem + ".out")).write_text(std_output)
-      (testdata_dir_path / (new_test_data_stem + ".err")).touch()
+    def save_data(dir=testdata_dir_path, stem=new_test_data_stem, input=new_test_data, output=std_output):
+      (dir / (stem + ".in")).write_text(input)
+      (dir / (stem + ".out")).write_text(output)
+      (dir / (stem + ".err")).touch()
 
     if argv.save:
       save_data()
