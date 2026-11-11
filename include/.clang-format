@@ -1,6 +1,6 @@
 Language: Cpp
 Standard: Latest
-ColumnLimit: 140
+ColumnLimit: 120
 IndentWidth: 2
 ContinuationIndentWidth: 2
 UseTab: Never
