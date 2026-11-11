@@ -3,33 +3,50 @@
 
 import argparse
 import subprocess
+import sys
 import time
+from enum import Enum
 from pathlib import Path
 
-# > run.py
-# 1. execute preprocessor/pp.py, -t gcc -r are passed to it, you can choose whether to pass -m
-# 2. for every xxx.in/xxx.out pair from `testdata_dir_path`, use the content of xxx.in as input, test if the output of sol.cpp is the same
-#    as the content of xxx.out (after removing trailing white characters), write the information into `log_txt_path`
+
+class Mode(Enum):
+    TEST = 0
+    DIFF = 1
+    GENERATE = 2
+
+
+default_testdata_dir = Path("test/default")
+log_path = Path("test/log.txt")
+
 parser = argparse.ArgumentParser(add_help=False)
-parser.add_argument("-m", "--multiple", action="store_true")
-# > run.py -d count
-#                       ↑ 1. can be empty, the default value is 50
-#                         2. can be a float, e.g. 1e3
-#                         3. must be positive
-# do the following things `count` times:
-# 1. generate a piece of data using gen.cpp
-# 2. let sol.cpp and std.cpp both take this data as input, and compare the output of them, if the two outputs differ, save the input and
-#    the output of std.cpp into `testdata_dir_path`, then write the information into `log_txt_path`, and terminate the loop
-parser.add_argument("-d", "--diff", metavar="count", nargs="?", const=50, type=float)
-# > run.py -d count -s
-# -d mode, but loop certainly `count` times, and save every generated data pair
-parser.add_argument("-s", "--save", action="store_true")
+
+# > run.py -m -i testdata_dir
+# 1. execute preprocessor/pp.py (can remove -m, see pp.py for -m usage)
+# 2. iterate xxx.in/xxx.out pairs in `testdata_dir`, use the content of xxx.in as input, test if the output of sol.cpp is the same as the
+#    content of xxx.out (after removing trailing white characters), write the information into `log_path`
+# 3. -i is only available in test mode
+parser.add_argument("-m", "--multiple_tests", action="store_true")
+parser.add_argument("-i", "--input_dir", metavar="testdata_dir", default=None, type=str)
+
+mutex_args = parser.add_mutually_exclusive_group()
+
+# > run.py -m -d count -o testdata_dir
+# 1. preprocess
+# 2. loop A, B `count` times:
+#   A. generate a piece of data using gen.cpp
+#   B. let sol.cpp and std.cpp both take this data as input, compare the output, if the two outputs differ, save the input and the output of
+#      std.cpp into `testdata_dir`, then write the information into `log_path`, and terminate the loop
+mutex_args.add_argument("-d", "--diff", metavar="count", nargs="?", const=100, type=int)
+
+# > run.py -m -g count -o testdata_dir
+# 1. preprocess
+# 2. loop `count` times:
+#    gen.cpp generates inputs, then sol.cpp generates corresponding outputs, save the them into testdata_dir
+mutex_args.add_argument("-g", "--generate", metavar="count", type=int)
+
+parser.add_argument("-o", "--output_dir", metavar="testdata_dir", default=None, type=str)
+
 argv = parser.parse_args()
-
-
-testdata_dir_path = Path("test/data")
-log_txt_path = Path("test/log.txt")
-
 
 exe_dir_path = Path(Path("build/exe_dir.txt").read_text().rstrip())
 sol_exe_path = exe_dir_path / "sol"
@@ -159,22 +176,50 @@ def diff_mode(no_difference: bool = True):
     print("done")
 
 
-def main():
-    pp_args_list = ["-t", "gcc", "-r"]
-    if argv.multiple:
-        pp_args_list.append("-m")
-    subprocess.run(["python3", "preprocessor/pp.py"] + pp_args_list, check=False)
-
-    log_txt_path.write_text("")
+def resolve_mode():
+    if argv.diff is not None or argv.generate is not None:
+        if argv.input_dir is not None:
+            parser.error("-i/--input_dir is only available in test mode")
+        if argv.output_dir is None:
+            argv.output_dir = default_testdata_dir
+        else:
+            argv.output_dir = Path(argv.output_dir)
 
     if argv.diff is not None:
-        if argv.diff <= 0:
-            raise SyntaxError("invalid arguments")
-        diff_mode()
+        if argv.diff > 0:
+            return Mode.DIFF
+        else:
+            parser.error("-d/--diff count must be positive")
+    elif argv.generate is not None:
+        if argv.generate > 0:
+            return Mode.GENERATE
+        else:
+            parser.error("-g/--generate count must be positive")
     else:
-        if argv.save:
-            raise SyntaxError("invalid arguments")
-        normal_mode()
+        if argv.output_dir is not None:
+            parser.error("-o/--output_dir is useless in test mode")
+        if argv.input_dir is None:
+            argv.input_dir = default_testdata_dir
+        else:
+            argv.input_dir = Path(argv.input_dir)
+        return Mode.TEST
+
+
+def main():
+    mode = resolve_mode()
+
+    pp_args = []
+    if argv.multiple_tests:
+        pp_args.append("-m")
+    subprocess.run([sys.executable, "preprocessor/pp.py"] + pp_args, check=True)
+    log_path.write_text("")
+
+    if mode == Mode.TEST:
+        test()
+    elif mode == Mode.DIFF:
+        diff()
+    elif mode == Mode.GENERATE:
+        generate()
 
 
 if __name__ == "__main__":
