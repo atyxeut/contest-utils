@@ -3,4 +3,8 @@
 
 #pragma once
 
-#include <macro/is_in_debug_mode.hpp>
+#ifdef NDEBUG
+#define NOT_RELEASE_MODE 0
+#else
+#define NOT_RELEASE_MODE 1
+#endif // NDEBUG

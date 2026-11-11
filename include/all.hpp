@@ -3,8 +3,6 @@
 
 #pragma once
 
-#include <macro/all.hpp>
-
 #include <core.hpp>
 
 #include <data_structure/all.hpp>

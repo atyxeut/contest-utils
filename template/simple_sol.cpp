@@ -1,8 +1,6 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-constexpr int NN = 1e6 + 1;
-
 void solve();
 
 int main() {
