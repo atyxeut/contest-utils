@@ -22,8 +22,8 @@ parser = argparse.ArgumentParser(add_help=False)
 
 # > run.py -m -i testdata_dir
 # 1. execute preprocessor/pp.py (can remove -m, see pp.py for -m usage)
-# 2. iterate xxx.in/xxx.out pairs in `testdata_dir`, use the content of xxx.in as input, test if the output of sol.cpp is the same as the
-#    content of xxx.out (after removing trailing white characters), write the information into `log_path`
+# 2. iterate .in/.out pairs in `testdata_dir`, use the content of .in as input, test if the output of sol.cpp is the
+#    same as the content of xxx.out (after removing trailing white characters), write the information into `log_path`
 # 3. -i is only available in test mode
 parser.add_argument("-m", "--multiple_tests", action="store_true")
 parser.add_argument("-i", "--input_dir", metavar="testdata_dir", default=None, type=str)
@@ -34,8 +34,9 @@ mutex_args = parser.add_mutually_exclusive_group()
 # 1. preprocess
 # 2. loop A, B `count` times:
 #   A. generate a piece of data using gen.cpp
-#   B. let sol.cpp and std.cpp both take this data as input, compare the output, if the two outputs differ, save the input and the output of
-#      std.cpp into `testdata_dir`, then write the information into `log_path`, and terminate the loop
+#   B. let sol.cpp and std.cpp both take this data as input, compare the output, if the two outputs differ, save the
+#      input and the output of std.cpp into `testdata_dir`, then write the information into `log_path`, and terminate
+#      the loop
 mutex_args.add_argument("-d", "--diff", metavar="count", nargs="?", const=100, type=int)
 
 # > run.py -m -g count -o testdata_dir
@@ -119,7 +120,9 @@ def normal_mode(tested_cnt: int = 0):
 
         if is_same:
             with log_txt_path.open(mode="a") as log_file:
-                log_file.write(f"test {tested_cnt} ({testcase_in_file_path.name}), {sol_execution_time:.3f}ms, passed\n")
+                log_file.write(
+                    f"test {tested_cnt} ({testcase_in_file_path.name}), {sol_execution_time:.3f}ms, passed\n"
+                )
         else:
             with log_txt_path.open(mode="a+") as log_file:
                 log_file.seek(0)
@@ -127,7 +130,10 @@ def normal_mode(tested_cnt: int = 0):
                 log_file.seek(2)
                 if content and content[-1] != "\n":
                     log_file.write("\n")
-                log_file.write(f"test {tested_cnt} ({testcase_in_file_path.name}), {sol_execution_time:.3f}ms, failed:\n{comp_result}\n")
+                log_file.write(
+                    f"test {tested_cnt} ({testcase_in_file_path.name}), "
+                    f"{sol_execution_time:.3f}ms, failed:\n{comp_result}\n"
+                )
 
     print("done")
 

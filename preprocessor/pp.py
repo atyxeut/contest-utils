@@ -9,8 +9,10 @@ from pathlib import Path
 parser = argparse.ArgumentParser(add_help=False)
 
 # > pp.py -m
-# expand #include <***.hpp> directives in sol.cpp, output the result into sub.cpp, then add `#define NDEBUG` at the beginning of sub.cpp
-# if -m is presented, add `#define ONE_INPUT_MULTIPLE_TESTS 1` at the beginning of sub.cpp, see template/sol.cpp for the usage of this macro
+# expand #include <***.hpp> directives in sol.cpp, output the result into sub.cpp, then add `#define NDEBUG` at the
+# beginning of sub.cpp
+# if -m is presented, add `#define ONE_INPUT_MULTIPLE_TESTS 1` at the beginning of sub.cpp, see template/sol.cpp for
+# the usage of this macro
 parser.add_argument("-m", "--multiple_tests", action="store_true")
 
 argv = parser.parse_args()

@@ -10,8 +10,8 @@ from pathlib import Path
 # create necessary folders and files for future use, if those folders and files already exist, then nothing happens
 parser = argparse.ArgumentParser(add_help=False)
 # > init.py -t count
-#                        ↑ can be empty, defaults to 0, setting a value < 0 is equivalent to setting 0
-#                          can be floating-point numbers, e.g. 1e2
+#              ↑ can be empty, defaults to 0, setting a value < 0 is equivalent to setting 0
+#                can be floating-point numbers, e.g. 1e2
 # if count is 0, reset test/data folder to its initial state
 # if count > 0, create new xxx.in/xxx.out pairs to test/data folder
 parser.add_argument("-t", "--test", metavar="count", nargs="?", const=0, type=float)
@@ -94,7 +94,12 @@ def generate_build_folder():
     remove(Path(".xmake"))
     remove(Path("build"))
     subprocess.run(["xmake", "f"], check=False)
-    subprocess.run(["xmake", "project", "-k", "compile_commands", "--outputdir=build"], text=True, stdout=subprocess.PIPE, check=False)
+    subprocess.run(
+        ["xmake", "project", "-k", "compile_commands", "--outputdir=build"],
+        text=True,
+        stdout=subprocess.PIPE,
+        check=False,
+    )
 
     init_build_target_name = "init"
     build_info = subprocess.run(
@@ -115,7 +120,9 @@ def generate_build_folder():
     remove(Path(target_exe_path_str))
 
     last_slash_idx = target_exe_path_str.rfind("/")
-    Path("build/exe_dir.txt").write_text(target_exe_path_str[: last_slash_idx if last_slash_idx != -1 else target_exe_path_str.rfind("\\")])
+    Path("build/exe_dir.txt").write_text(
+        target_exe_path_str[: last_slash_idx if last_slash_idx != -1 else target_exe_path_str.rfind("\\")]
+    )
 
 
 def main():
